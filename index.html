@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+  <title>涵涵根坤坤的空间 · 双人同步版</title>
+  <!-- 引入 Leancloud 实时同步 SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.15.0/dist/av-live-query-min.js"></script>
+  <style>
+    /* 样式与之前科技感设计一致，此处省略重复，使用简化版但保留核心 */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0a0c14; min-height: 100vh; display: flex; justify-content: center; align-items: center; font-family: 'Orbitron', sans-serif; padding: 20px; color: #fff; }
+    .container { max-width: 800px; width: 100%; background: rgba(10,14,28,0.85); backdrop-filter: blur(25px); border-radius: 36px; padding: 30px; border: 1px solid #0ff3; box-shadow: 0 0 40px #0af3; }
+    .title { text-align: center; font-size: 2.3rem; background: linear-gradient(135deg, #c084fc, #60a5fa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 25px; }
+    .login-box { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; }
+    .login-item { background: #1a1f35; border-radius: 25px; padding: 20px; text-align: center; border: 1px solid #fff3; }
+    .login-item input { padding: 10px; border-radius: 20px; border: none; background: #0006; color: #fff; text-align: center; }
+    .btn { background: linear-gradient(135deg, #7c3aed, #2563eb); border: none; color: white; padding: 12px 24px; border-radius: 30px; font-weight: bold; cursor: pointer; margin-top: 20px; width: 100%; }
+    .panels { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 20px; }
+    .panel { flex: 1 1 250px; background: #1a1f3580; border-radius: 30px; padding: 20px; border: 1px solid; }
+    .hh-panel { border-color: #c084fc; box-shadow: 0 0 30px #a855f766; }
+    .kk-panel { border-color: #3b82f6; box-shadow: 0 0 30px #3b82f666; }
+    .gender-btn { padding: 8px 16px; margin: 5px; border-radius: 20px; border: 1px solid #fff5; background: #0005; color: #fff; cursor: pointer; }
+    .gender-btn.active-male { background: #4f46e5; }
+    .gender-btn.active-female { background: #be185d; }
+    .color-circle { display: inline-block; width: 35px; height: 35px; border-radius: 50%; margin: 5px; border: 2px solid #fff3; cursor: pointer; }
+    .color-circle.selected { border: 3px solid white; transform: scale(1.15); }
+    input.answer { width: 100%; padding: 10px; border-radius: 20px; background: #0006; border: 1px solid #fff3; color: #fff; margin: 8px 0; }
+    .lock-msg { color: #fbbf24; font-size: 0.8rem; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container" id="app">
+    <!-- 登录界面 -->
+    <div id="loginScreen">
+      <div class="title">✨涵涵根坤坤的空间✨</div>
+      <div class="login-box">
+        <div class="login-item">
+          <div>🐱 HH</div>
+          <input type="password" id="hhPass" placeholder="密码">
+        </div>
+        <div class="login-item">
+          <div>🐶 KK</div>
+          <input type="password" id="kkPass" placeholder="密码">
+        </div>
+      </div>
+      <button class="btn" id="loginBtn">🔐 进入空间</button>
+      <p id="loginError" style="color:#f87171;text-align:center;"></p>
+    </div>
+
+    <!-- 主面板（初始隐藏） -->
+    <div id="dashboard" class="hidden">
+      <div class="title">⚡ 下注平台 · 实时同步 ⚡</div>
+      <div class="panels">
+        <!-- HH 面板 -->
+        <div class="panel hh-panel" id="hhPanel">
+          <h3>🐱 HH · 涵涵</h3>
+          <div><strong>🧬 性别</strong></div>
+          <div id="hhGenderBtns">
+            <button class="gender-btn" data-gender="男">♂ 男</button>
+            <button class="gender-btn" data-gender="女">♀ 女</button>
+          </div>
+          <div class="lock-msg" id="hhLockMsg"></div>
+          <div><strong>🎨 颜色</strong></div>
+          <div id="hhColors"></div>
+          <div><strong>💬 答案</strong></div>
+          <input class="answer" id="hhAnswerInput" placeholder="写你的答案...">
+          <button class="btn" id="hhAnswerSubmit" style="margin-top:5px;">提交</button>
+          <div id="hhAnswerDisplay"></div>
+        </div>
+
+        <!-- KK 面板 -->
+        <div class="panel kk-panel" id="kkPanel">
+          <h3>🐶 KK · 坤坤</h3>
+          <div><strong>🧬 性别</strong></div>
+          <div id="kkGenderBtns">
+            <button class="gender-btn" data-gender="男">♂ 男</button>
+            <button class="gender-btn" data-gender="女">♀ 女</button>
+          </div>
+          <div class="lock-msg" id="kkLockMsg"></div>
+          <div><strong>🎨 颜色</strong></div>
+          <div id="kkColors"></div>
+          <div><strong>💬 答案</strong></div>
+          <input class="answer" id="kkAnswerInput" placeholder="写你的答案...">
+          <button class="btn" id="kkAnswerSubmit" style="margin-top:5px;">提交</button>
+          <div id="kkAnswerDisplay"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ================= 1. 替换成你的 Leancloud 凭证 =================
+    const APP_ID = '你的AppID';
+    const APP_KEY = '你的AppKey';
+    const SERVER_URL = 'https://你的服务器地址'; // 例如 https://abc123.lc-cn-n1-shared.com
+    // =============================================================
+
+    AV.init({ appId: APP_ID, appKey: APP_KEY, serverURL: SERVER_URL });
+
+    // 房间ID（固定，让所有人进入同一个房间）
+    const ROOM_ID = 'main_room';
+
+    // 全局状态
+    let currentUser = null; // 'hh' 或 'kk'
+    let gameObject = null;  // Leancloud 对象
+
+    // UI元素
+    const loginScreen = document.getElementById('loginScreen');
+    const dashboard = document.getElementById('dashboard');
+    const hhPassInput = document.getElementById('hhPass');
+    const kkPassInput = document.getElementById('kkPass');
+    const loginBtn = document.getElementById('loginBtn');
+    const loginError = document.getElementById('loginError');
+
+    // 颜色列表
+    const colorList = [
+      { name: '红', code: '#ef4444' },
+      { name: '橙', code: '#f97316' },
+      { name: '黄', code: '#eab308' },
+      { name: '绿', code: '#22c55e' },
+      { name: '青', code: '#06b6d4' },
+      { name: '蓝', code: '#3b82f6' },
+      { name: '紫', code: '#8b5cf6' },
+      { name: '粉', code: '#ec4899' }
+    ];
+
+    // 初始化颜色球
+    function renderColors() {
+      const hhDiv = document.getElementById('hhColors');
+      const kkDiv = document.getElementById('kkColors');
+      hhDiv.innerHTML = ''; kkDiv.innerHTML = '';
+      colorList.forEach(c => {
+        const circle = document.createElement('span');
+        circle.className = 'color-circle';
+        circle.style.backgroundColor = c.code;
+        circle.dataset.color = c.name;
+        circle.dataset.code = c.code;
+        hhDiv.appendChild(circle.cloneNode(true));
+        kkDiv.appendChild(circle.cloneNode(true));
+      });
+    }
+
+    // 同步UI到本地状态
+    function updateUI() {
+      if (!gameObject) return;
+      const data = gameObject.attributes;
+      // 性别
+      document.querySelectorAll('#hhGenderBtns .gender-btn').forEach(btn => {
+        btn.classList.remove('active-male', 'active-female');
+        if (data.hhGender === btn.dataset.gender) btn.classList.add(data.hhGender==='男'?'active-male':'active-female');
+      });
+      document.querySelectorAll('#kkGenderBtns .gender-btn').forEach(btn => {
+        btn.classList.remove('active-male', 'active-female');
+        if (data.kkGender === btn.dataset.gender) btn.classList.add(data.kkGender==='男'?'active-male':'active-female');
+      });
+      // 性别锁定提示
+      const hhLock = document.getElementById('hhLockMsg');
+      const kkLock = document.getElementById('kkLockMsg');
+      if (data.genderLocked) {
+        if (data.genderFirstUser === 'hh') {
+          hhLock.textContent = '';
+          kkLock.textContent = '🔒 HH 已选择性别';
+        } else {
+          hhLock.textContent = '🔒 KK 已选择性别';
+          kkLock.textContent = '';
+        }
+      } else {
+        hhLock.textContent = '';
+        kkLock.textContent = '';
+      }
+      // 颜色选择
+      document.querySelectorAll('#hhColors .color-circle').forEach(c => {
+        c.classList.remove('selected');
+        if (c.dataset.color === data.hhColor) c.classList.add('selected');
+      });
+      document.querySelectorAll('#kkColors .color-circle').forEach(c => {
+        c.classList.remove('selected');
+        if (c.dataset.color === data.kkColor) c.classList.add('selected');
+      });
+      // 答案
+      document.getElementById('hhAnswerDisplay').textContent = data.hhAnswer ? `📝 ${data.hhAnswer}` : '';
+      document.getElementById('kkAnswerDisplay').textContent = data.kkAnswer ? `📝 ${data.kkAnswer}` : '';
+    }
+
+    // 从云端加载或创建房间
+    async function loadOrCreateRoom() {
+      const query = new AV.Query('GameRoom');
+      query.equalTo('roomId', ROOM_ID);
+      let obj = await query.first();
+      if (!obj) {
+        const GameRoom = AV.Object.extend('GameRoom');
+        obj = new GameRoom();
+        obj.set('roomId', ROOM_ID);
+        obj.set('hhGender', null);
+        obj.set('kkGender', null);
+        obj.set('hhColor', null);
+        obj.set('kkColor', null);
+        obj.set('hhAnswer', '');
+        obj.set('kkAnswer', '');
+        obj.set('genderLocked', false);
+        obj.set('genderFirstUser', null);
+        await obj.save();
+      }
+      return obj;
+    }
+
+    // 开始实时监听
+    function startLiveQuery() {
+      const query = new AV.Query('GameRoom');
+      query.equalTo('roomId', ROOM_ID);
+      query.subscribe().then((liveQuery) => {
+        liveQuery.on('update', (obj) => {
+          // 别人修改了房间数据，更新本地对象和UI
+          gameObject = obj;
+          updateUI();
+        });
+        // 初次加载也要设置
+        loadOrCreateRoom().then(obj => {
+          gameObject = obj;
+          updateUI();
+        });
+      });
+    }
+
+    // 登录
+    loginBtn.addEventListener('click', () => {
+      const hhPass = hhPassInput.value.trim();
+      const kkPass = kkPassInput.value.trim();
+      if (hhPass === '123' && kkPass === '') {
+        currentUser = 'hh';
+      } else if (kkPass === '123' && hhPass === '') {
+        currentUser = 'kk';
+      } else if (hhPass === '123' && kkPass === '123') {
+        loginError.textContent = '请只输入一个人的密码，另一个人从其他设备登录';
+        return;
+      } else {
+        loginError.textContent = '密码错误！HH密码123，KK密码123';
+        return;
+      }
+      loginScreen.classList.add('hidden');
+      dashboard.classList.remove('hidden');
+      renderColors();
+      startLiveQuery();
+      attachEvents();
+    });
+
+    // 绑定交互事件
+    function attachEvents() {
+      // 性别选择
+      document.querySelectorAll('#hhGenderBtns .gender-btn').forEach(btn => {
+        btn.addEventListener('click', () => genderClick('hh', btn.dataset.gender));
+      });
+      document.querySelectorAll('#kkGenderBtns .gender-btn').forEach(btn => {
+        btn.addEventListener('click', () => genderClick('kk', btn.dataset.gender));
+      });
+      // 颜色选择
+      document.querySelectorAll('#hhColors .color-circle').forEach(c => {
+        c.addEventListener('click', () => colorClick('hh', c.dataset.color));
+      });
+      document.querySelectorAll('#kkColors .color-circle').forEach(c => {
+        c.addEventListener('click', () => colorClick('kk', c.dataset.color));
+      });
+      // 答案提交
+      document.getElementById('hhAnswerSubmit').addEventListener('click', () => submitAnswer('hh'));
+      document.getElementById('kkAnswerSubmit').addEventListener('click', () => submitAnswer('kk'));
+    }
+
+    async function genderClick(user, gender) {
+      if (!gameObject) return;
+      const data = gameObject.attributes;
+      if (data.genderLocked) {
+        alert('已经有用户选择性别，不可更改');
+        return;
+      }
+      if (user === 'hh' && data.hhGender) return;
+      if (user === 'kk' && data.kkGender) return;
+
+      gameObject.set(user === 'hh' ? 'hhGender' : 'kkGender', gender);
+      gameObject.set('genderLocked', true);
+      gameObject.set('genderFirstUser', user);
+      await gameObject.save();
+      updateUI();
+    }
+
+    async function colorClick(user, color) {
+      if (!gameObject) return;
+      gameObject.set(user === 'hh' ? 'hhColor' : 'kkColor', color);
+      await gameObject.save();
+      updateUI();
+    }
+
+    async function submitAnswer(user) {
+      if (!gameObject) return;
+      const input = document.getElementById(user === 'hh' ? 'hhAnswerInput' : 'kkAnswerInput');
+      const answer = input.value.trim();
+      gameObject.set(user === 'hh' ? 'hhAnswer' : 'kkAnswer', answer);
+      await gameObject.save();
+      updateUI();
+    }
+  </script>
+</body>
+</html>
